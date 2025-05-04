@@ -3,8 +3,12 @@ use x86_64::instructions::port::{Port, PortGeneric, ReadWriteAccess};
 
 // Constants
 pub const RED: [u8; 3] = [255, 0, 0];
+pub const ORANGE: [u8; 3] = [255, 165, 0];
+pub const YELLOW: [u8; 3] = [255, 255, 0];
 pub const GREEN: [u8; 3] = [0, 255, 0];
+pub const CYAN: [u8; 3] = [0, 255, 255];
 pub const BLUE: [u8; 3] = [0, 0, 255];
+pub const MAGENTA: [u8; 3] = [255, 0, 255];
 pub const WHITE: [u8; 3] = [255, 255, 255];
 pub const BLACK: [u8; 3] = [0, 0, 0];
 
