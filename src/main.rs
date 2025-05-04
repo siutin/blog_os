@@ -13,7 +13,6 @@ use core::panic::PanicInfo;
 use x86_64::{structures::paging::{Page, PhysFrame, Size4KiB, FrameAllocator, Mapper, PageTableFlags, mapper::MapToError}, PhysAddr, VirtAddr};
 
 mod framebuffer;
-use core::fmt::Write;
 
 entry_point!(kernel_main);
 
@@ -98,7 +97,12 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     test_main();
 
     println!("It did not crash!");
-    blog_os::hlt_loop();
+    // blog_os::hlt_loop();
+    
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
 }
 
 /// This function is called on panic.
