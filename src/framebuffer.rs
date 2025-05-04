@@ -12,7 +12,7 @@ pub const BLACK: [u8; 3] = [0, 0, 0];
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 768;
 const BPP: usize = 4;  // 32-bit color (BGRA)
-const BUFFER_SIZE: usize = WIDTH * HEIGHT * BPP;
+pub const BUFFER_SIZE: usize = WIDTH * HEIGHT * BPP;
 
 // VBE Registers (Bochs VBE Extensions)
 const VBE_DISPI_INDEX_ID: u16 = 0x0;
@@ -35,7 +35,7 @@ const VBE_DISPI_ENABLED: u16 = 0x01;
 const VBE_DISPI_LFB_ENABLED: u16 = 0x40;
 
 // Framebuffer base address for Bochs VBE (standard location)
-const FB_ADDR: u64 = 0xFD000000;
+pub const FB_ADDR: u64 = 0xFD000000;
 
 pub struct FrameBufferWriter {
     buffer: &'static mut [u8],

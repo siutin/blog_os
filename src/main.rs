@@ -34,8 +34,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
     // Map the framebuffer memory region
-    const FRAMEBUFFER_ADDR: u64 = 0xFD000000;
-    const FRAMEBUFFER_SIZE: usize = 1024 * 768 * 4; // 1024x768 with 4 bytes per pixel
+    const FRAMEBUFFER_ADDR: u64 = framebuffer::FB_ADDR;
+    const FRAMEBUFFER_SIZE: usize = framebuffer::BUFFER_SIZE;
     
     println!("Mapping framebuffer memory at 0x{:X}...", FRAMEBUFFER_ADDR);
     
