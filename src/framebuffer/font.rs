@@ -1,8 +1,32 @@
 use super::constants::*;
 use super::writer::FrameBufferWriter;
 
-pub const FONT_WIDTH: usize = 8;
-pub const FONT_HEIGHT: usize = 8;
+// Base font dimensions
+const BASE_FONT_WIDTH: usize = 8;
+const BASE_FONT_HEIGHT: usize = 8;
+
+// Configurable font scaling factor (1 = 8x8, 2 = 16x16, etc.)
+pub const FONT_SCALE: usize = 1;
+pub const FONT_WIDTH: usize = BASE_FONT_WIDTH * FONT_SCALE;
+pub const FONT_HEIGHT: usize = BASE_FONT_HEIGHT * FONT_SCALE;
+
+// Alpha blending for anti-aliasing
+fn blend_color(bg: &[u8; 3], fg: &[u8; 3], alpha: f32) -> [u8; 3] {
+    [
+        ((1.0 - alpha) * bg[0] as f32 + alpha * fg[0] as f32) as u8,
+        ((1.0 - alpha) * bg[1] as f32 + alpha * fg[1] as f32) as u8,
+        ((1.0 - alpha) * bg[2] as f32 + alpha * fg[2] as f32) as u8
+    ]
+}
+
+// Subpixel rendering helper - applies different alpha levels to R,G,B
+fn subpixel_blend(bg: &[u8; 3], fg: &[u8; 3], r_alpha: f32, g_alpha: f32, b_alpha: f32) -> [u8; 3] {
+    [
+        ((1.0 - r_alpha) * bg[0] as f32 + r_alpha * fg[0] as f32) as u8,
+        ((1.0 - g_alpha) * bg[1] as f32 + g_alpha * fg[1] as f32) as u8,
+        ((1.0 - b_alpha) * bg[2] as f32 + b_alpha * fg[2] as f32) as u8
+    ]
+}
 
 // Basic 8x8 bitmap font (first 128 ASCII characters)
 // Each character is 8 bytes, where each byte represents a row of 8 pixels
@@ -146,17 +170,27 @@ impl FrameBufferWriter {
         
         let char_bitmap = FONT_8X8[c as usize];
         
-        for row in 0..FONT_HEIGHT {
-            let row_data = char_bitmap[row];
+        for base_row in 0..BASE_FONT_HEIGHT {
+            let row_data = char_bitmap[base_row];
             
-            for col in 0..FONT_WIDTH {
-                // Check if the current bit is set (from LSB to MSB)
-                let pixel_is_set = (row_data & (1 << col)) != 0;
+            // Each row is now repeated FONT_SCALE times
+            for scale_y in 0..FONT_SCALE {
+                let current_y = y + (base_row * FONT_SCALE) + scale_y;
                 
-                if pixel_is_set {
-                    self.set_pixel(x + col, y + row, fg_color);
-                } else if let Some(bg) = bg_color {
-                    self.set_pixel(x + col, y + row, bg);
+                for base_col in 0..BASE_FONT_WIDTH {
+                    // Check if the current bit is set (from LSB to MSB)
+                    let pixel_is_set = (row_data & (1 << base_col)) != 0;
+                    
+                    // Each column is now repeated FONT_SCALE times
+                    for scale_x in 0..FONT_SCALE {
+                        let current_x = x + (base_col * FONT_SCALE) + scale_x;
+                        
+                        if pixel_is_set {
+                            self.set_pixel(current_x, current_y, fg_color);
+                        } else if let Some(bg) = bg_color {
+                            self.set_pixel(current_x, current_y, bg);
+                        }
+                    }
                 }
             }
         }
@@ -180,6 +214,293 @@ impl FrameBufferWriter {
             // Wrap text if it exceeds screen width
             if current_x + FONT_WIDTH > WIDTH {
                 current_y += FONT_HEIGHT;
+                current_x = x;
+            }
+        }
+    }
+
+    pub fn scaled_draw_text(&mut self, x: usize, y: usize, text: &str, scale: usize, fg_color: &[u8; 3], bg_color: Option<&[u8; 3]>) {
+        let mut current_x = x;
+        let mut current_y = y;
+        let char_width = BASE_FONT_WIDTH * scale;
+        let char_height = BASE_FONT_HEIGHT * scale;
+        
+        for c in text.chars() {
+            if c == '\n' {
+                // Move to the next line
+                current_y += char_height;
+                current_x = x;
+                continue;
+            }
+            
+            if c as usize >= FONT_8X8.len() {
+                // Skip unsupported characters
+                current_x += char_width;
+                continue;
+            }
+            
+            let char_bitmap = FONT_8X8[c as usize];
+            
+            for base_row in 0..BASE_FONT_HEIGHT {
+                let row_data = char_bitmap[base_row];
+                
+                // Each row is now repeated scale times
+                for scale_y in 0..scale {
+                    let pixel_y = current_y + (base_row * scale) + scale_y;
+                    
+                    for base_col in 0..BASE_FONT_WIDTH {
+                        // Check if the current bit is set (from LSB to MSB)
+                        let pixel_is_set = (row_data & (1 << base_col)) != 0;
+                        
+                        // Each column is now repeated scale times
+                        for scale_x in 0..scale {
+                            let pixel_x = current_x + (base_col * scale) + scale_x;
+                            
+                            if pixel_is_set {
+                                self.set_pixel(pixel_x, pixel_y, fg_color);
+                            } else if let Some(bg) = bg_color {
+                                self.set_pixel(pixel_x, pixel_y, bg);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            current_x += char_width;
+            
+            // Wrap text if it exceeds screen width
+            if current_x + char_width > WIDTH {
+                current_y += char_height;
+                current_x = x;
+            }
+        }
+    }
+
+    pub fn smooth_draw_text(&mut self, x: usize, y: usize, text: &str, scale: usize, fg_color: &[u8; 3], bg_color: Option<&[u8; 3]>) {
+        let mut current_x = x;
+        let mut current_y = y;
+        let char_width = BASE_FONT_WIDTH * scale;
+        let char_height = BASE_FONT_HEIGHT * scale;
+        
+        // Higher oversampling gives better quality but is slower
+        const OVERSAMPLING: usize = 4; 
+        
+        for c in text.chars() {
+            if c == '\n' {
+                // Move to the next line
+                current_y += char_height;
+                current_x = x;
+                continue;
+            }
+            
+            if c as usize >= FONT_8X8.len() {
+                // Skip unsupported characters
+                current_x += char_width;
+                continue;
+            }
+            
+            let char_bitmap = FONT_8X8[c as usize];
+            
+            // For each pixel in the scaled character
+            for pixel_y in 0..char_height {
+                // Map back to font bitmap coordinates for sampling
+                let font_y = pixel_y * BASE_FONT_HEIGHT / char_height;
+                let row_data = char_bitmap[font_y];
+                
+                for pixel_x in 0..char_width {
+                    // Map back to font bitmap coordinates
+                    let font_x = pixel_x * BASE_FONT_WIDTH / char_width;
+                    
+                    // For anti-aliasing, we sample multiple points in the source bitmap
+                    // and average the result
+                    let mut covered_count = 0;
+                    
+                    // Sample in a grid around the target point
+                    for sample_y in 0..OVERSAMPLING {
+                        let sample_font_y = font_y as f32 + (sample_y as f32 / OVERSAMPLING as f32);
+                        if sample_font_y >= BASE_FONT_HEIGHT as f32 {
+                            continue;
+                        }
+                        
+                        let row_idx = sample_font_y as usize;
+                        let row = if row_idx < BASE_FONT_HEIGHT { 
+                            char_bitmap[row_idx]
+                        } else {
+                            0 // Outside the bitmap
+                        };
+                        
+                        for sample_x in 0..OVERSAMPLING {
+                            let sample_font_x = font_x as f32 + (sample_x as f32 / OVERSAMPLING as f32);
+                            if sample_font_x >= BASE_FONT_WIDTH as f32 {
+                                continue;
+                            }
+                            
+                            let col_idx = sample_font_x as usize;
+                            if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
+                                covered_count += 1;
+                            }
+                        }
+                    }
+                    
+                    // Calculate the alpha based on coverage
+                    let total_samples = OVERSAMPLING * OVERSAMPLING;
+                    let alpha = covered_count as f32 / total_samples as f32;
+                    
+                    // If alpha is 0 or 1, we don't need blending
+                    if alpha > 0.0 {
+                        if alpha >= 1.0 {
+                            self.set_pixel(current_x + pixel_x, current_y + pixel_y, fg_color);
+                        } else {
+                            if let Some(bg) = bg_color {
+                                // Blend colors for partial pixels
+                                let blended = blend_color(bg, fg_color, alpha);
+                                self.set_pixel(current_x + pixel_x, current_y + pixel_y, &blended);
+                            } else {
+                                self.set_pixel(current_x + pixel_x, current_y + pixel_y, fg_color);
+                            }
+                        }
+                    } else if alpha == 0.0 {
+                        if let Some(bg) = bg_color {
+                            self.set_pixel(current_x + pixel_x, current_y + pixel_y, bg);
+                        } else {
+                            self.set_pixel(current_x + pixel_x, current_y + pixel_y, fg_color);
+                        }
+                    }
+                }
+            }
+            
+            current_x += char_width;
+            
+            // Wrap text if it exceeds screen width
+            if current_x + char_width > WIDTH {
+                current_y += char_height;
+                current_x = x;
+            }
+        }
+    }
+
+    pub fn draw_subpixel_text(&mut self, x: usize, y: usize, text: &str, scale: usize, fg_color: &[u8; 3], bg_color: Option<&[u8; 3]>) {
+        let mut current_x = x;
+        let mut current_y = y;
+        let char_width = BASE_FONT_WIDTH * scale;
+        let char_height = BASE_FONT_HEIGHT * scale;
+        
+        // Higher oversampling gives better quality but is slower
+        const OVERSAMPLING: usize = 3; 
+        
+        for c in text.chars() {
+            if c == '\n' {
+                // Move to the next line
+                current_y += char_height;
+                current_x = x;
+                continue;
+            }
+            
+            if c as usize >= FONT_8X8.len() {
+                // Skip unsupported characters
+                current_x += char_width;
+                continue;
+            }
+            
+            let char_bitmap = FONT_8X8[c as usize];
+            
+            // For each pixel in the scaled character
+            for pixel_y in 0..char_height {
+                // Map back to font bitmap coordinates for sampling
+                let font_y = pixel_y * BASE_FONT_HEIGHT / char_height;
+                
+                for pixel_x in 0..char_width {
+                    // For subpixel rendering, we divide each pixel into RGB components
+                    // and calculate coverage separately for each
+                    
+                    // We offset the sampling slightly for R, G, B to create the subpixel effect
+                    // Convert to f32 for floating point calculations
+                    let base_x_f32 = (pixel_x * BASE_FONT_WIDTH) as f32 / char_width as f32;
+                    let r_font_x = base_x_f32 - 0.33;
+                    let g_font_x = base_x_f32;
+                    let b_font_x = base_x_f32 + 0.33;
+                    
+                    let mut r_covered = 0.0;
+                    let mut g_covered = 0.0;
+                    let mut b_covered = 0.0;
+                    
+                    // Sample multiple points for each subpixel component
+                    for sample_y in 0..OVERSAMPLING {
+                        let sample_font_y = font_y as f32 + (sample_y as f32 / OVERSAMPLING as f32);
+                        if sample_font_y >= BASE_FONT_HEIGHT as f32 {
+                            continue;
+                        }
+                        
+                        let row_idx = sample_font_y as usize;
+                        let row = if row_idx < BASE_FONT_HEIGHT { 
+                            char_bitmap[row_idx]
+                        } else {
+                            0 // Outside the bitmap
+                        };
+                        
+                        // R channel sampling
+                        if r_font_x >= 0.0 {
+                            for sample_x in 0..OVERSAMPLING {
+                                let sample_font_x = r_font_x + (sample_x as f32 / OVERSAMPLING as f32);
+                                if sample_font_x >= BASE_FONT_WIDTH as f32 {
+                                    continue;
+                                }
+                                
+                                let col_idx = sample_font_x as usize;
+                                if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
+                                    r_covered += 1.0;
+                                }
+                            }
+                        }
+                        
+                        // G channel sampling
+                        for sample_x in 0..OVERSAMPLING {
+                            let sample_font_x = g_font_x + (sample_x as f32 / OVERSAMPLING as f32);
+                            if sample_font_x >= BASE_FONT_WIDTH as f32 || sample_font_x < 0.0 {
+                                continue;
+                            }
+                            
+                            let col_idx = sample_font_x as usize;
+                            if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
+                                g_covered += 1.0;
+                            }
+                        }
+                        
+                        // B channel sampling
+                        for sample_x in 0..OVERSAMPLING {
+                            let sample_font_x = b_font_x + (sample_x as f32 / OVERSAMPLING as f32);
+                            if sample_font_x >= BASE_FONT_WIDTH as f32 || sample_font_x < 0.0 {
+                                continue;
+                            }
+                            
+                            let col_idx = sample_font_x as usize;
+                            if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
+                                b_covered += 1.0;
+                            }
+                        }
+                    }
+                    
+                    // Calculate the alpha for each channel based on coverage
+                    let total_samples = OVERSAMPLING as f32 * OVERSAMPLING as f32;
+                    let r_alpha = r_covered / total_samples;
+                    let g_alpha = g_covered / total_samples;
+                    let b_alpha = b_covered / total_samples;
+                    
+                    // Use subpixel blending for smoother text
+                    if let Some(bg) = bg_color {
+                        let blended = subpixel_blend(bg, fg_color, r_alpha, g_alpha, b_alpha);
+                        self.set_pixel(current_x + pixel_x, current_y + pixel_y, &blended);
+                    } else {
+                        self.set_pixel(current_x + pixel_x, current_y + pixel_y, fg_color);
+                    }
+                }
+            }
+            
+            current_x += char_width;
+            
+            // Wrap text if it exceeds screen width
+            if current_x + char_width > WIDTH {
+                current_y += char_height;
                 current_x = x;
             }
         }

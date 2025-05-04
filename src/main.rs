@@ -90,6 +90,27 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     fb.draw_text(x + 20, y + 60, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", &framebuffer::YELLOW, None);
     fb.draw_text(x + 20, y + 80, "abcdefghijklmnopqrstuvwxyz", &framebuffer::CYAN, None);
     fb.draw_text(x + 20, y + 100, "0123456789!@#$%^&*()", &framebuffer::MAGENTA, None);
+    
+    // Test various sized fonts
+    let scale_test_y = y + 120;
+    fb.draw_text(x + 20, scale_test_y, "Standard 8x8 Font", &framebuffer::WHITE, None);
+    
+    // Try the custom scaling function with different sizes
+    fb.scaled_draw_text(x + 20, scale_test_y + 20, "16x16 Font", 2, &framebuffer::GREEN, None);
+    fb.scaled_draw_text(x + 20, scale_test_y + 50, "24x24", 3, &framebuffer::BLUE, None);
+    fb.scaled_draw_text(x + 20, scale_test_y + 90, "32", 4, &framebuffer::RED, None);
+
+    // Test smooth text rendering
+		fb.smooth_draw_text(x + 20, scale_test_y + 120, "Smooth 8x8 Font", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
+		fb.smooth_draw_text(x + 20, scale_test_y + 150, "Smooth 16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
+		fb.smooth_draw_text(x + 20, scale_test_y + 180, "Smooth 24x24 Font", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
+		fb.smooth_draw_text(x + 20, scale_test_y + 210, "Smooth 32x32 Font", 4, &framebuffer::RED, Some(&framebuffer::BLACK));
+
+		// Test subpixel text rendering
+		fb.draw_subpixel_text(x + 20, scale_test_y + 240, "Subpixel 8x8 Font", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
+		fb.draw_subpixel_text(x + 20, scale_test_y + 270, "Subpixel 16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
+		fb.draw_subpixel_text(x + 20, scale_test_y + 300, "Subpixel 24x24 Font", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
+		fb.draw_subpixel_text(x + 20, scale_test_y + 330, "Subpixel 32x32 Font", 4, &framebuffer::RED, Some(&framebuffer::BLACK));
 
     println!("Test pattern complete");
 
