@@ -19,6 +19,18 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use x86_64::VirtAddr;
 
     println!("Hello World{}", "!");
+
+    // Print memory map
+    println!("Memory map:");
+    for region in boot_info.memory_map.iter() {
+        println!(
+            "  start: {:#x}, end: {:#x}, type: {:?}",
+            region.range.start_addr(),
+            region.range.end_addr(),
+            region.region_type
+        );
+    }
+        
     blog_os::init();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
