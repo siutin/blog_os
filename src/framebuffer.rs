@@ -159,6 +159,42 @@ impl FrameBufferWriter {
     pub fn draw_rect(&mut self, x: usize, y: usize, width: usize, height: usize, rgb: &[u8; 3]) {
         self.fill(x, y, width, height, rgb);
     }
+
+    pub fn draw_circle(&mut self, x: usize, y: usize, radius: usize, fill_rgb: &[u8; 3], border_rgb: &[u8; 3]) {
+        // First fill a slightly smaller circle
+        if radius > 1 {
+            let fill_radius = radius - 1; // Make the fill radius 1 pixel smaller
+            for cy in y.saturating_sub(fill_radius)..=(y + fill_radius).min(HEIGHT-1) {
+                for cx in x.saturating_sub(fill_radius)..=(x + fill_radius).min(WIDTH-1) {
+                    let dx = if cx > x { cx - x } else { x - cx };
+                    let dy = if cy > y { cy - y } else { y - cy };
+                    let distance_squared = dx * dx + dy * dy;
+                      
+                    if distance_squared <= fill_radius * fill_radius {
+                        self.set_pixel(cx, cy, fill_rgb);
+                    }
+                }
+            }
+        }
+        
+        // Draw the border using distance calculation for better visibility
+        for cy in y.saturating_sub(radius)..=(y + radius).min(HEIGHT-1) {
+            for cx in x.saturating_sub(radius)..=(x + radius).min(WIDTH-1) {
+                let dx = if cx > x { cx - x } else { x - cx };
+                let dy = if cy > y { cy - y } else { y - cy };
+                let distance_squared = dx * dx + dy * dy;
+                
+                // Draw pixels that are close to the exact radius
+                let inner_limit = (radius - 1).saturating_mul(radius - 1);
+                let outer_limit = (radius + 1) * (radius + 1);
+                
+                if distance_squared >= inner_limit && distance_squared <= outer_limit {
+                    self.set_pixel(cx, cy, border_rgb);
+                }
+            }
+        }
+    }   
+    
 }
 
 impl Write for FrameBufferWriter {

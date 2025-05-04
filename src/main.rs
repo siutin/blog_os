@@ -79,6 +79,12 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let y = (fb.height() - rect_height) / 2;
     fb.draw_rect(x, y, rect_width, rect_height, &framebuffer::WHITE);
     
+    // draw a circle with red border and filled with blue
+    let circle_x = fb.width() / 2;
+    let circle_y = fb.height() / 2;
+    let circle_radius = 50;
+    fb.draw_circle(circle_x, circle_y, circle_radius, &framebuffer::BLUE, &framebuffer::RED);
+
     println!("Test pattern complete");
 
     #[cfg(test)]
