@@ -72,45 +72,42 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     fb.draw_rect(bar_width * 2, 0, bar_width, fb.height(), &framebuffer::BLUE);
     
     // Draw a white rectangle in the middle
-    let rect_width = 300;
-    let rect_height = 200;
+    let rect_width = 600;
+    let rect_height = 400;
     let x = (fb.width() - rect_width) / 2;
     let y = (fb.height() - rect_height) / 2;
     fb.draw_rect(x, y, rect_width, rect_height, &framebuffer::BLACK);
     
     // draw a circle with red border and filled with blue
     let circle_x = fb.width() / 2;
-    let circle_y = fb.height() / 2;
+    let circle_y = fb.height() / 2 - 150;
     let circle_radius = 50;
     fb.draw_circle(circle_x, circle_y, circle_radius, &framebuffer::BLUE, &framebuffer::RED);
     
     // Draw some text
-    fb.draw_text(x + 20, y + 20, "Hello from MyOS!", &framebuffer::BLACK, Some(&framebuffer::WHITE));
-    fb.draw_text(x + 20, y + 40, "Framebuffer text rendering", &framebuffer::ORANGE, None);
-    fb.draw_text(x + 20, y + 60, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", &framebuffer::YELLOW, None);
-    fb.draw_text(x + 20, y + 80, "abcdefghijklmnopqrstuvwxyz", &framebuffer::CYAN, None);
-    fb.draw_text(x + 20, y + 100, "0123456789!@#$%^&*()", &framebuffer::MAGENTA, None);
+    fb.draw_text(x + 20, y + 20, "Standard 8x8 Font", &framebuffer::WHITE, Some(&framebuffer::BLACK));
     
-    // Test various sized fonts
-    let scale_test_y = y + 120;
-    fb.draw_text(x + 20, scale_test_y, "Standard 8x8 Font", &framebuffer::WHITE, None);
+    // Draw text with the new HD font
+    fb.draw_hd_text(x + 20, y + 50, "High Resolution 16x16 Font", &framebuffer::GREEN, Some(&framebuffer::BLACK));
+    fb.draw_hd_text(x + 20, y + 75, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", &framebuffer::YELLOW, Some(&framebuffer::BLACK));
+    fb.draw_hd_text(x + 20, y + 100, "0123456789", &framebuffer::CYAN, Some(&framebuffer::BLACK));
     
     // Try the custom scaling function with different sizes
-    fb.scaled_draw_text(x + 20, scale_test_y + 20, "16x16 Font", 2, &framebuffer::GREEN, None);
-    fb.scaled_draw_text(x + 20, scale_test_y + 50, "24x24", 3, &framebuffer::BLUE, None);
-    fb.scaled_draw_text(x + 20, scale_test_y + 90, "32", 4, &framebuffer::RED, None);
+    fb.scaled_draw_text(x + 20, y + 140, "16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
+    fb.scaled_draw_text(x + 20, y + 170, "24x24", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
+    fb.scaled_draw_text(x + 20, y + 210, "32", 4, &framebuffer::RED, Some(&framebuffer::BLACK));
 
     // Test smooth text rendering
-		fb.smooth_draw_text(x + 20, scale_test_y + 120, "Smooth 8x8 Font", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
-		fb.smooth_draw_text(x + 20, scale_test_y + 150, "Smooth 16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
-		fb.smooth_draw_text(x + 20, scale_test_y + 180, "Smooth 24x24 Font", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
-		fb.smooth_draw_text(x + 20, scale_test_y + 210, "Smooth 32x32 Font", 4, &framebuffer::RED, Some(&framebuffer::BLACK));
+    let smooth_y = y + 250;
+    fb.smooth_draw_text(x + 20, smooth_y, "Smooth 8x8 Font", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
+    fb.smooth_draw_text(x + 20, smooth_y + 20, "Smooth 16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
+    fb.smooth_draw_text(x + 20, smooth_y + 50, "Smooth 24x24", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
 
-		// Test subpixel text rendering
-		fb.draw_subpixel_text(x + 20, scale_test_y + 240, "Subpixel 8x8 Font", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
-		fb.draw_subpixel_text(x + 20, scale_test_y + 270, "Subpixel 16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
-		fb.draw_subpixel_text(x + 20, scale_test_y + 300, "Subpixel 24x24 Font", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
-		fb.draw_subpixel_text(x + 20, scale_test_y + 330, "Subpixel 32x32 Font", 4, &framebuffer::RED, Some(&framebuffer::BLACK));
+    // Test subpixel text rendering
+    let subpixel_y = y + 340;
+    fb.draw_subpixel_text(x + 20, subpixel_y, "Subpixel 8x8", 1, &framebuffer::WHITE, Some(&framebuffer::BLACK));
+    fb.draw_subpixel_text(x + 20, subpixel_y + 20, "Subpixel 16x16", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
+    fb.draw_subpixel_text(x + 20, subpixel_y + 50, "Subpixel 24x24", 3, &framebuffer::BLUE, Some(&framebuffer::BLACK));
 
     println!("Test pattern complete");
 
