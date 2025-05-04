@@ -10,6 +10,10 @@ use blog_os::println;
 use blog_os::task::{Task, executor::Executor, keyboard};
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
+use x86_64::{structures::paging::{Page, PhysFrame, Size4KiB, FrameAllocator, Mapper, PageTableFlags, mapper::MapToError}, PhysAddr, VirtAddr};
+
+mod framebuffer;
+use core::fmt::Write;
 
 entry_point!(kernel_main);
 
@@ -19,17 +23,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use x86_64::VirtAddr;
 
     println!("Hello World{}", "!");
-
-    // Print memory map
-    println!("Memory map:");
-    for region in boot_info.memory_map.iter() {
-        println!(
-            "  start: {:#x}, end: {:#x}, type: {:?}",
-            region.range.start_addr(),
-            region.range.end_addr(),
-            region.region_type
-        );
-    }
+    println!("Initializing framebuffer...");
         
     blog_os::init();
 
@@ -39,13 +33,59 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
+    // Map the framebuffer memory region
+    const FRAMEBUFFER_ADDR: u64 = 0xFD000000;
+    const FRAMEBUFFER_SIZE: usize = 1024 * 768 * 4; // 1024x768 with 4 bytes per pixel
+    
+    println!("Mapping framebuffer memory at 0x{:X}...", FRAMEBUFFER_ADDR);
+    
+    // Map each page in the framebuffer range
+    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::NO_CACHE;
+    
+    for page_addr in (0..FRAMEBUFFER_SIZE).step_by(4096) {
+        let page = Page::<Size4KiB>::containing_address(VirtAddr::new(FRAMEBUFFER_ADDR + page_addr as u64));
+        let frame = PhysFrame::<Size4KiB>::containing_address(PhysAddr::new(FRAMEBUFFER_ADDR + page_addr as u64));
+        unsafe {
+            mapper.map_to(page, frame, flags, &mut frame_allocator)
+                  .expect("failed to map framebuffer memory")
+                  .flush();
+        }
+    }
+    
+    println!("Framebuffer memory mapped successfully");
+
+    // Initialize framebuffer
+    let mut fb = framebuffer::FrameBufferWriter::new();
+    
+    println!("Framebuffer initialized: {}x{}", fb.width(), fb.height());
+    
+    // Clear the screen
+    fb.clear_screen();
+    
+    println!("Drawing test pattern...");
+    
+    // Draw some test patterns to verify it's working
+    // Draw red, green, blue vertical bars to make it obvious when it's working
+    let bar_width = fb.width() / 3;
+    
+    fb.draw_rect(0, 0, bar_width, fb.height(), &framebuffer::RED);
+    fb.draw_rect(bar_width, 0, bar_width, fb.height(), &framebuffer::GREEN);
+    fb.draw_rect(bar_width * 2, 0, bar_width, fb.height(), &framebuffer::BLUE);
+    
+    // Draw a white rectangle in the middle
+    let rect_width = 300;
+    let rect_height = 200;
+    let x = (fb.width() - rect_width) / 2;
+    let y = (fb.height() - rect_height) / 2;
+    fb.draw_rect(x, y, rect_width, rect_height, &framebuffer::WHITE);
+    
+    println!("Test pattern complete");
+
     #[cfg(test)]
     test_main();
 
-    let mut executor = Executor::new();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
-    executor.run();
+    println!("It did not crash!");
+    blog_os::hlt_loop();
 }
 
 /// This function is called on panic.
