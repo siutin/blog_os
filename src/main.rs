@@ -77,13 +77,20 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let rect_height = 200;
     let x = (fb.width() - rect_width) / 2;
     let y = (fb.height() - rect_height) / 2;
-    fb.draw_rect(x, y, rect_width, rect_height, &framebuffer::WHITE);
+    fb.draw_rect(x, y, rect_width, rect_height, &framebuffer::BLACK);
     
     // draw a circle with red border and filled with blue
     let circle_x = fb.width() / 2;
     let circle_y = fb.height() / 2;
     let circle_radius = 50;
     fb.draw_circle(circle_x, circle_y, circle_radius, &framebuffer::BLUE, &framebuffer::RED);
+    
+    // Draw some text
+    fb.draw_text(x + 20, y + 20, "Hello from MyOS!", &framebuffer::BLACK, Some(&framebuffer::WHITE));
+    fb.draw_text(x + 20, y + 40, "Framebuffer text rendering", &framebuffer::ORANGE, None);
+    fb.draw_text(x + 20, y + 60, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", &framebuffer::YELLOW, None);
+    fb.draw_text(x + 20, y + 80, "abcdefghijklmnopqrstuvwxyz", &framebuffer::CYAN, None);
+    fb.draw_text(x + 20, y + 100, "0123456789!@#$%^&*()", &framebuffer::MAGENTA, None);
 
     println!("Test pattern complete");
 
