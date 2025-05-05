@@ -957,24 +957,24 @@ impl FrameBufferWriter {
         if c as usize >= FONT_8X8.len() {
             return; // Only support ASCII characters in our font
         }
-        
+
         let char_bitmap = FONT_8X8[c as usize];
-        
+
         for base_row in 0..BASE_FONT_HEIGHT {
             let row_data = char_bitmap[base_row];
-            
+
             // Each row is now repeated FONT_SCALE times
             for scale_y in 0..FONT_SCALE {
                 let current_y = y + (base_row * FONT_SCALE) + scale_y;
-                
+
                 for base_col in 0..BASE_FONT_WIDTH {
                     // Check if the current bit is set (from LSB to MSB)
                     let pixel_is_set = (row_data & (1 << base_col)) != 0;
-                    
+
                     // Each column is now repeated FONT_SCALE times
                     for scale_x in 0..FONT_SCALE {
                         let current_x = x + (base_col * FONT_SCALE) + scale_x;
-                        
+
                         if pixel_is_set {
                             self.set_pixel(current_x, current_y, fg_color);
                         } else if let Some(bg) = bg_color {
@@ -985,11 +985,11 @@ impl FrameBufferWriter {
             }
         }
     }
-    
+
     pub fn draw_text(&mut self, x: usize, y: usize, text: &str, fg_color: &[u8; 3], bg_color: Option<&[u8; 3]>) {
         let mut current_x = x;
         let mut current_y = y;
-        
+
         for c in text.chars() {
             if c == '\n' {
                 // Move to the next line
@@ -997,10 +997,10 @@ impl FrameBufferWriter {
                 current_x = x;
                 continue;
             }
-            
+
             self.draw_char(current_x, current_y, c, fg_color, bg_color);
             current_x += FONT_WIDTH;
-            
+
             // Wrap text if it exceeds screen width
             if current_x + FONT_WIDTH > WIDTH {
                 current_y += FONT_HEIGHT;
@@ -1014,7 +1014,7 @@ impl FrameBufferWriter {
         let mut current_y = y;
         let char_width = BASE_FONT_WIDTH * scale;
         let char_height = BASE_FONT_HEIGHT * scale;
-        
+
         for c in text.chars() {
             if c == '\n' {
                 // Move to the next line
@@ -1022,30 +1022,30 @@ impl FrameBufferWriter {
                 current_x = x;
                 continue;
             }
-            
+
             if c as usize >= FONT_8X8.len() {
                 // Skip unsupported characters
                 current_x += char_width;
                 continue;
             }
-            
+
             let char_bitmap = FONT_8X8[c as usize];
-            
+
             for base_row in 0..BASE_FONT_HEIGHT {
                 let row_data = char_bitmap[base_row];
-                
+
                 // Each row is now repeated scale times
                 for scale_y in 0..scale {
                     let pixel_y = current_y + (base_row * scale) + scale_y;
-                    
+
                     for base_col in 0..BASE_FONT_WIDTH {
                         // Check if the current bit is set (from LSB to MSB)
                         let pixel_is_set = (row_data & (1 << base_col)) != 0;
-                        
+
                         // Each column is now repeated scale times
                         for scale_x in 0..scale {
                             let pixel_x = current_x + (base_col * scale) + scale_x;
-                            
+
                             if pixel_is_set {
                                 self.set_pixel(pixel_x, pixel_y, fg_color);
                             } else if let Some(bg) = bg_color {
@@ -1055,9 +1055,9 @@ impl FrameBufferWriter {
                     }
                 }
             }
-            
+
             current_x += char_width;
-            
+
             // Wrap text if it exceeds screen width
             if current_x + char_width > WIDTH {
                 current_y += char_height;
@@ -1071,10 +1071,10 @@ impl FrameBufferWriter {
         let mut current_y = y;
         let char_width = BASE_FONT_WIDTH * scale;
         let char_height = BASE_FONT_HEIGHT * scale;
-        
+
         // Higher oversampling gives better quality but is slower
-        const OVERSAMPLING: usize = 4; 
-        
+        const OVERSAMPLING: usize = 4;
+
         for c in text.chars() {
             if c == '\n' {
                 // Move to the next line
@@ -1082,60 +1082,60 @@ impl FrameBufferWriter {
                 current_x = x;
                 continue;
             }
-            
+
             if c as usize >= FONT_8X8.len() {
                 // Skip unsupported characters
                 current_x += char_width;
                 continue;
             }
-            
+
             let char_bitmap = FONT_8X8[c as usize];
-            
+
             // For each pixel in the scaled character
             for pixel_y in 0..char_height {
                 // Map back to font bitmap coordinates for sampling
                 let font_y = pixel_y * BASE_FONT_HEIGHT / char_height;
                 let row_data = char_bitmap[font_y];
-                
+
                 for pixel_x in 0..char_width {
                     // Map back to font bitmap coordinates
                     let font_x = pixel_x * BASE_FONT_WIDTH / char_width;
-                    
+
                     // For anti-aliasing, we sample multiple points in the source bitmap
                     // and average the result
                     let mut covered_count = 0;
-                    
+
                     // Sample in a grid around the target point
                     for sample_y in 0..OVERSAMPLING {
                         let sample_font_y = font_y as f32 + (sample_y as f32 / OVERSAMPLING as f32);
                         if sample_font_y >= BASE_FONT_HEIGHT as f32 {
                             continue;
                         }
-                        
+
                         let row_idx = sample_font_y as usize;
-                        let row = if row_idx < BASE_FONT_HEIGHT { 
+                        let row = if row_idx < BASE_FONT_HEIGHT {
                             char_bitmap[row_idx]
                         } else {
                             0 // Outside the bitmap
                         };
-                        
+
                         for sample_x in 0..OVERSAMPLING {
                             let sample_font_x = font_x as f32 + (sample_x as f32 / OVERSAMPLING as f32);
                             if sample_font_x >= BASE_FONT_WIDTH as f32 {
                                 continue;
                             }
-                            
+
                             let col_idx = sample_font_x as usize;
                             if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
                                 covered_count += 1;
                             }
                         }
                     }
-                    
+
                     // Calculate the alpha based on coverage
                     let total_samples = OVERSAMPLING * OVERSAMPLING;
                     let alpha = covered_count as f32 / total_samples as f32;
-                    
+
                     // If alpha is 0 or 1, we don't need blending
                     if alpha > 0.0 {
                         if alpha >= 1.0 {
@@ -1156,9 +1156,9 @@ impl FrameBufferWriter {
                     }
                 }
             }
-            
+
             current_x += char_width;
-            
+
             // Wrap text if it exceeds screen width
             if current_x + char_width > WIDTH {
                 current_y += char_height;
@@ -1172,10 +1172,10 @@ impl FrameBufferWriter {
         let mut current_y = y;
         let char_width = BASE_FONT_WIDTH * scale;
         let char_height = BASE_FONT_HEIGHT * scale;
-        
+
         // Higher oversampling gives better quality but is slower
-        const OVERSAMPLING: usize = 3; 
-        
+        const OVERSAMPLING: usize = 3;
+
         for c in text.chars() {
             if c == '\n' {
                 // Move to the next line
@@ -1183,49 +1183,49 @@ impl FrameBufferWriter {
                 current_x = x;
                 continue;
             }
-            
+
             if c as usize >= FONT_8X8.len() {
                 // Skip unsupported characters
                 current_x += char_width;
                 continue;
             }
-            
+
             let char_bitmap = FONT_8X8[c as usize];
-            
+
             // For each pixel in the scaled character
             for pixel_y in 0..char_height {
                 // Map back to font bitmap coordinates for sampling
                 let font_y = pixel_y * BASE_FONT_HEIGHT / char_height;
-                
+
                 for pixel_x in 0..char_width {
                     // For subpixel rendering, we divide each pixel into RGB components
                     // and calculate coverage separately for each
-                    
+
                     // We offset the sampling slightly for R, G, B to create the subpixel effect
                     // Convert to f32 for floating point calculations
                     let base_x_f32 = (pixel_x * BASE_FONT_WIDTH) as f32 / char_width as f32;
                     let r_font_x = base_x_f32 - 0.33;
                     let g_font_x = base_x_f32;
                     let b_font_x = base_x_f32 + 0.33;
-                    
+
                     let mut r_covered = 0.0;
                     let mut g_covered = 0.0;
                     let mut b_covered = 0.0;
-                    
+
                     // Sample multiple points for each subpixel component
                     for sample_y in 0..OVERSAMPLING {
                         let sample_font_y = font_y as f32 + (sample_y as f32 / OVERSAMPLING as f32);
                         if sample_font_y >= BASE_FONT_HEIGHT as f32 {
                             continue;
                         }
-                        
+
                         let row_idx = sample_font_y as usize;
-                        let row = if row_idx < BASE_FONT_HEIGHT { 
+                        let row = if row_idx < BASE_FONT_HEIGHT {
                             char_bitmap[row_idx]
                         } else {
                             0 // Outside the bitmap
                         };
-                        
+
                         // R channel sampling
                         if r_font_x >= 0.0 {
                             for sample_x in 0..OVERSAMPLING {
@@ -1233,47 +1233,47 @@ impl FrameBufferWriter {
                                 if sample_font_x >= BASE_FONT_WIDTH as f32 {
                                     continue;
                                 }
-                                
+
                                 let col_idx = sample_font_x as usize;
                                 if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
                                     r_covered += 1.0;
                                 }
                             }
                         }
-                        
+
                         // G channel sampling
                         for sample_x in 0..OVERSAMPLING {
                             let sample_font_x = g_font_x + (sample_x as f32 / OVERSAMPLING as f32);
                             if sample_font_x >= BASE_FONT_WIDTH as f32 || sample_font_x < 0.0 {
                                 continue;
                             }
-                            
+
                             let col_idx = sample_font_x as usize;
                             if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
                                 g_covered += 1.0;
                             }
                         }
-                        
+
                         // B channel sampling
                         for sample_x in 0..OVERSAMPLING {
                             let sample_font_x = b_font_x + (sample_x as f32 / OVERSAMPLING as f32);
                             if sample_font_x >= BASE_FONT_WIDTH as f32 || sample_font_x < 0.0 {
                                 continue;
                             }
-                            
+
                             let col_idx = sample_font_x as usize;
                             if col_idx < BASE_FONT_WIDTH && (row & (1 << col_idx)) != 0 {
                                 b_covered += 1.0;
                             }
                         }
                     }
-                    
+
                     // Calculate the alpha for each channel based on coverage
                     let total_samples = OVERSAMPLING as f32 * OVERSAMPLING as f32;
                     let r_alpha = r_covered / total_samples;
                     let g_alpha = g_covered / total_samples;
                     let b_alpha = b_covered / total_samples;
-                    
+
                     // Use subpixel blending for smoother text
                     if let Some(bg) = bg_color {
                         let blended = subpixel_blend(bg, fg_color, r_alpha, g_alpha, b_alpha);
@@ -1283,9 +1283,9 @@ impl FrameBufferWriter {
                     }
                 }
             }
-            
+
             current_x += char_width;
-            
+
             // Wrap text if it exceeds screen width
             if current_x + char_width > WIDTH {
                 current_y += char_height;
@@ -1298,22 +1298,22 @@ impl FrameBufferWriter {
         if c as usize >= FONT_16X16.len() {
             return; // Only support ASCII characters in our font
         }
-        
+
         let char_bitmap = FONT_16X16[c as usize];
-        
+
         for row in 0..HD_FONT_HEIGHT {
             let row_data = char_bitmap[row];
             let current_y = y + row;
-            
+
             for col in 0..HD_FONT_WIDTH {
                 // Check if the current bit is set
                 // For each column, we need to determine which byte (0 or 1) and which bit in that byte
                 let byte_idx = col / 8;
                 let bit_idx = col % 8;
                 let pixel_is_set = (row_data[byte_idx] & (0x80 >> bit_idx)) != 0;
-                
+
                 let current_x = x + col;
-                
+
                 if pixel_is_set {
                     self.set_pixel(current_x, current_y, fg_color);
                 } else if let Some(bg) = bg_color {
@@ -1322,11 +1322,11 @@ impl FrameBufferWriter {
             }
         }
     }
-    
+
     pub fn draw_hd_text(&mut self, x: usize, y: usize, text: &str, fg_color: &[u8; 3], bg_color: Option<&[u8; 3]>) {
         let mut current_x = x;
         let mut current_y = y;
-        
+
         for c in text.chars() {
             if c == '\n' {
                 // Move to the next line
@@ -1334,10 +1334,10 @@ impl FrameBufferWriter {
                 current_x = x;
                 continue;
             }
-            
+
             self.draw_hd_char(current_x, current_y, c, fg_color, bg_color);
             current_x += HD_FONT_WIDTH;
-            
+
             // Wrap text if it exceeds screen width
             if current_x + HD_FONT_WIDTH > WIDTH {
                 current_y += HD_FONT_HEIGHT;
@@ -1345,4 +1345,4 @@ impl FrameBufferWriter {
             }
         }
     }
-} 
+}
