@@ -93,3 +93,34 @@ fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
 fn panic(info: &PanicInfo) -> ! {
     test_panic_handler(info)
 }
+
+/// Like the `print!` macro in the standard library, but prints to either VGA text buffer or serial port based on feature flag.
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        #[cfg(feature = "serial-logging")]
+        $crate::serial::_print(format_args!($($arg)*));
+        
+        #[cfg(not(feature = "serial-logging"))]
+        $crate::vga_buffer::_print(format_args!($($arg)*));
+    });
+}
+
+/// Like the `println!` macro in the standard library, but prints to either VGA text buffer or serial port based on feature flag.
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[test_case]
+fn test_println_simple() {
+    println!("test_println_simple output");
+}
+
+#[test_case]
+fn test_println_many() {
+    for _ in 0..200 {
+        println!("test_println_many output");
+    }
+}
