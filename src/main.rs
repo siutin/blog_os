@@ -11,6 +11,7 @@ use blog_os::task::{Task, executor::Executor, keyboard};
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use x86_64::{structures::paging::{Page, PhysFrame, Size4KiB, FrameAllocator, Mapper, PageTableFlags, mapper::MapToError}, PhysAddr, VirtAddr};
+use alloc::vec::Vec;
 
 mod framebuffer;
 
@@ -91,6 +92,16 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     fb.draw_hd_text(x + 20, y + 50, "High Resolution 16x16 Font", &framebuffer::GREEN, Some(&framebuffer::BLACK));
     fb.draw_hd_text(x + 20, y + 75, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", &framebuffer::YELLOW, Some(&framebuffer::BLACK));
     fb.draw_hd_text(x + 20, y + 100, "0123456789", &framebuffer::CYAN, Some(&framebuffer::BLACK));
+ 
+    let chars = (32..128).map(|i| char::from_u32(i).unwrap()).collect::<Vec<char>>();
+    let mut new_y: usize = y + 125;
+    let brk_line_y = 60;
+    for (i, c) in chars.iter().enumerate() {
+        fb.draw_hd_char(10 + ((i % brk_line_y) * 16), new_y, *c, &framebuffer::BLACK, Some(&framebuffer::YELLOW));
+        if i % brk_line_y == brk_line_y - 1 {
+            new_y += 32;
+        }
+    }
     
     // // Try the custom scaling function with different sizes
     // fb.scaled_draw_text(x + 20, y + 140, "16x16 Font", 2, &framebuffer::GREEN, Some(&framebuffer::BLACK));
