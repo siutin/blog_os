@@ -1,4 +1,5 @@
 use crate::{print, println};
+use alloc::boxed::Box;
 use conquer_once::spin::OnceCell;
 use core::{
     pin::Pin,
@@ -36,7 +37,7 @@ pub struct ScancodeStream {
 impl ScancodeStream {
     pub fn new() -> Self {
         SCANCODE_QUEUE
-            .try_init_once(|| ArrayQueue::new(100))
+            .try_init_once(|| ArrayQueue::new(128))
             .expect("ScancodeStream::new should only be called once");
         ScancodeStream { _private: () }
     }
@@ -78,8 +79,16 @@ pub async fn print_keypresses() {
         if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
             if let Some(key) = keyboard.process_keyevent(key_event) {
                 match key {
-                    DecodedKey::Unicode(character) => print!("{}", character),
-                    DecodedKey::RawKey(key) => print!("{:?}", key),
+                    DecodedKey::Unicode(character) => {
+                        let msg = alloc::format!("{}", character);
+                        let msg_leaked: &'static str = Box::leak(msg.into_boxed_str());
+                        crate::task::print_queue::add_print_job(msg_leaked);
+                    },
+                    DecodedKey::RawKey(key) => {
+                        let msg = alloc::format!("{:?}", key);
+                        let msg_leaked: &'static str = Box::leak(msg.into_boxed_str());
+                        crate::task::print_queue::add_print_job(msg_leaked);
+                    },
                 }
             }
         }

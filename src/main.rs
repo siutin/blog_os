@@ -7,7 +7,7 @@
 extern crate alloc;
 
 use blog_os::println;
-use blog_os::task::{Task, executor::Executor, keyboard};
+use blog_os::task::{Task, executor::Executor, keyboard, print_queue_task};
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use x86_64::{structures::paging::{Page, PhysFrame, Size4KiB, FrameAllocator, Mapper, PageTableFlags, mapper::MapToError}, PhysAddr, VirtAddr};
@@ -129,8 +129,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // blog_os::hlt_loop();
     
     let mut executor = Executor::new();
+    executor.spawn(Task::new(print_queue_task()));
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
+    // Add a test print job
+    blog_os::task::print_queue::add_print_job("Hello from the print queue!\n");
     executor.run();
 }
 
@@ -154,7 +157,10 @@ async fn async_number() -> u32 {
 
 async fn example_task() {
     let number = async_number().await;
-    println!("async number: {}", number);
+    let msg = alloc::format!("async number: {}", number);
+    use alloc::boxed::Box;
+    let msg_leaked: &'static str = Box::leak(msg.into_boxed_str());
+    blog_os::task::print_queue::add_print_job(msg_leaked);
 }
 
 #[test_case]
