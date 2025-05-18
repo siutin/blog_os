@@ -7,7 +7,7 @@
 extern crate alloc;
 
 use blog_os::println;
-use blog_os::task::{Task, executor::Executor, keyboard, print_queue_task};
+use blog_os::task::{Task, executor::Executor, keyboard, mouse, print_queue_task};
 use bootloader::{BootInfo, entry_point};
 use core::panic::PanicInfo;
 use x86_64::{structures::paging::{Page, PhysFrame, Size4KiB, FrameAllocator, Mapper, PageTableFlags, mapper::MapToError}, PhysAddr, VirtAddr};
@@ -128,6 +128,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("It did not crash!");
     // blog_os::hlt_loop();
     
+    mouse::init_mouse();
+
     let mut executor = Executor::new();
     executor.spawn(Task::new(print_queue_task()));
     executor.spawn(Task::new(example_task()));

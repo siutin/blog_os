@@ -38,10 +38,12 @@ dependencies = [
  "linked_list_allocator",
  "pc-keyboard",
  "pic8259",
+ "ps2-mouse",
  "spin 0.10.0",
+ "spinning_top 0.3.0",
  "uart_16550",
  "volatile 0.6.1",
- "x86_64",
+ "x86_64 0.15.2",
 ]
 
 [[package]]
@@ -120,7 +122,7 @@ version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
 dependencies = [
- "spinning_top",
+ "spinning_top 0.2.5",
 ]
 
 [[package]]
@@ -145,7 +147,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62d9a86c292b165f757e47e7fd66855def189b2564609bc4203727b27c33db22"
 dependencies = [
- "x86_64",
+ "x86_64 0.15.2",
 ]
 
 [[package]]
@@ -159,6 +161,16 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "ps2-mouse"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7a1ea62fa77d411155c765d1ba9d0286b8af83a93cda6109c295a2bde1e04a0"
+dependencies = [
+ "bitflags 1.2.1",
+ "x86_64 0.14.13",
+]
 
 [[package]]
 name = "raw-cpuid"
@@ -206,6 +218,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "spinning_top"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d96d2d1d716fb500937168cc09353ffdc7a012be8475ac7308e1bdf0e3923300"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
 name = "uart_16550"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -237,6 +258,18 @@ dependencies = [
  "bit_field",
  "bitflags 1.2.1",
  "raw-cpuid",
+]
+
+[[package]]
+name = "x86_64"
+version = "0.14.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c101112411baafbb4bf8d33e4c4a80ab5b02d74d2612331c61e8192fc9710491"
+dependencies = [
+ "bit_field",
+ "bitflags 2.9.1",
+ "rustversion",
+ "volatile 0.4.4",
 ]
 
 [[package]]

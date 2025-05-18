@@ -10,6 +10,7 @@ pub mod executor;
 pub mod keyboard;
 pub mod simple_executor;
 pub mod print_queue;
+pub mod mouse;
 
 pub struct Task {
     id: TaskId,

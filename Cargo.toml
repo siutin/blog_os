@@ -24,6 +24,8 @@ uart_16550 = "0.3.2"
 pic8259 = "0.11.0"
 pc-keyboard = "0.8.0"
 linked_list_allocator = "0.10.5"
+ps2-mouse = "0.1" # or the latest version
+spinning_top = "0.3"
 
 [dependencies.lazy_static]
 version = "1.0"
