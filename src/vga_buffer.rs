@@ -1,7 +1,27 @@
 use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use volatile::Volatile;
+use core::ptr::NonNull;
+use volatile::VolatilePtr;
+
+/// A wrapper around VolatilePtr that implements Send and Sync.
+/// Safety: The VGA buffer is a memory-mapped I/O region that can be safely accessed from any thread.
+#[derive(Debug)]
+#[repr(transparent)]
+struct VgaCell<'a>(VolatilePtr<'a, ScreenChar>);
+
+unsafe impl<'a> Send for VgaCell<'a> {}
+unsafe impl<'a> Sync for VgaCell<'a> {}
+
+impl<'a> VgaCell<'a> {
+    fn write(&self, value: ScreenChar) {
+        unsafe { self.0.write(value) }
+    }
+
+    fn read(&self) -> ScreenChar {
+        unsafe { self.0.read() }
+    }
+}
 
 lazy_static! {
     /// A global `Writer` instance that can be used for printing to the VGA text buffer.
@@ -65,7 +85,7 @@ const BUFFER_WIDTH: usize = 80;
 /// A structure representing the VGA text buffer.
 #[repr(transparent)]
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[VgaCell<'static>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 /// A writer type that allows writing ASCII bytes and strings to an underlying `Buffer`.
